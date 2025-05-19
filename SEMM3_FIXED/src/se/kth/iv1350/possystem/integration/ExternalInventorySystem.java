@@ -6,69 +6,64 @@ import se.kth.iv1350.possystem.model.Item;
 import se.kth.iv1350.possystem.model.ItemDTO;
 
 /**
- *External inventory system of all items with hard coded example items
+ * Simulates an external inventory system containing pre-defined store items.
  */
 public class ExternalInventorySystem {
-    private List<Item> storeItems = new ArrayList<>();
-    private List<ItemDTO> itemDTOs = new ArrayList<>();
-	
-    
+    private List<Item> inventoryList = new ArrayList<>();
+    private List<ItemDTO> itemDefinitions = new ArrayList<>();
+
     public ExternalInventorySystem() {
-        
-	}
-    
-    /**
-     * Getter for list existing items in inventory
-     * @return storeitems returns list of items in store
-     */
-    public List<Item> getStoreItems(){
-        return this.storeItems;
     }
-   
+
     /**
-     * Adds items to the store inventory.
-     * (ItemName, price, VAT, barcode)
+     * Provides access to the store’s current list of stocked items.
+     * @return inventoryList containing all item objects available in store
+     */
+    public List<Item> getStoreItems() {
+        return this.inventoryList;
+    }
+
+    /**
+     * Populates the store inventory with hardcoded sample items.
+     * Each item is defined with a name, price, VAT, and barcode.
      */
     public void addItem() {
-        this.itemDTOs.add(new ItemDTO("Apples 5kg", 130, 8,123)); 
-        this.itemDTOs.add(new ItemDTO("Ketchup", 10, 5,234));
-        this.itemDTOs.add(new ItemDTO("Fish 100g", 20, 6, 345));
+        this.itemDefinitions.add(new ItemDTO("Banan eko 2.15kg", 43.0, 0, 123)); 
+        this.itemDefinitions.add(new ItemDTO("Felix Potatisbullar", 32.0, 12, 234));
+        this.itemDefinitions.add(new ItemDTO("Laxfilé 250g", 85.0, 6, 345));
 
-        this.storeItems.add(new Item(1, itemDTOs.get(0), 100));
-        this.storeItems.add(new Item(2, itemDTOs.get(1), 100));
-        this.storeItems.add(new Item(3, itemDTOs.get(2), 100));
-}
+        this.inventoryList.add(new Item(123, itemDefinitions.get(0), 100));
+        this.inventoryList.add(new Item(234, itemDefinitions.get(1), 100));
+        this.inventoryList.add(new Item(345, itemDefinitions.get(2), 100));
+    }
 
     /**
-     * Searches for an item in the inventory system using an identifier and
-     * throws exception if database is down or if barcode is not found
-     * @param barCode the item's identifier.
-     * @return Returns item if found, otherwise thows exception.
-     * @throws se.kth.iv1350.possystem.integration.BarCodeNotFoundException if barcode not found
-     * @throws se.kth.iv1350.possystem.integration.DataBaseFailureException if database is down
+     * Tries to find an item using its barcode. May simulate database errors.
+     * @param barCode The barcode used to identify the item
+     * @return the matching item, if found
+     * @throws BarCodeNotFoundException if the barcode doesn’t match any item
+     * @throws DataBaseFailureException if the simulated database goes offline
      */
     public Item search(int barCode) throws BarCodeNotFoundException, DataBaseFailureException {
-            
-        DatabaseHandler exceptionHandler = new DatabaseHandler();
-    
+        DatabaseHandler dbCheck = new DatabaseHandler();
+
         try {
-            exceptionHandler.databaseOperation();
-                
-            if(barCode == 500){
+            dbCheck.databaseOperation();
+
+            if (barCode == 500) {
                 throw new DataBaseFailureException("Database not responding");
             }
 
-            for (Item item : storeItems) {
-                if(item.getBarCode() == barCode) {
-                    return item;
+            for (Item i : inventoryList) {
+                if (i.getBarCode() == barCode) {
+                    return i;
                 }
             }
             throw new BarCodeNotFoundException("Item with bar code " + barCode + " not found in system");
-    
+
         } catch (DataBaseFailureException e) {
-                
             System.out.println(e.getMessage());
             throw e;
-            }
-        }        
+        }
+    }
 }

@@ -16,132 +16,119 @@ import se.kth.iv1350.possystem.view.TotalRevenueFileOutput;
 import se.kth.iv1350.possystem.view.TotalRevenueView;
 
 /**
- * The controller class of the POS system which handle communication
- * between view, model, and external systems
+ * Acts as the main coordinator between external systems, the model layer, and the user interface.
  */
 public class Controller {
-    private ExternalAccountingSystem accounting;
-    private ExternalInventorySystem inventory;
-    private Printer printer; 
-    private Sale sale;
-    private List<IncomeObserver> incomeObserver = new ArrayList<>();
-    private TotalRevenueView totRevenueView;
-    private  TotalRevenueFileOutput totRevenueFileOutput;
-    
+    private ExternalAccountingSystem accountingSystem;
+    private ExternalInventorySystem inventorySystem;
+    private Printer receiptPrinter; 
+    private Sale currentSale;
+    private List<IncomeObserver> revenueTrackers = new ArrayList<>();
+    private TotalRevenueView revenueView;
+    private TotalRevenueFileOutput revenueFileLogger;
     
     /**
-    * Creats instance of the controller object.
-    * @param printer external system to print receipt
-    * @param accounting external accounting system.
-    * @param inventory external inventory system.
-    */
-    public Controller(Printer printer, ExternalAccountingSystem accounting, ExternalInventorySystem inventory) {
-        this.printer = printer;
-        this.accounting = accounting;
-        this.inventory = inventory;
-        inventory.addItem();
+     * Initializes the controller and sets up external system connections.
+     * @param receiptPrinter Used to output the receipt
+     * @param accountingSystem External system that tracks financial transactions
+     * @param inventorySystem External storage representing item inventory
+     */
+    public Controller(Printer receiptPrinter, ExternalAccountingSystem accountingSystem, ExternalInventorySystem inventorySystem) {
+        this.receiptPrinter = receiptPrinter;
+        this.accountingSystem = accountingSystem;
+        this.inventorySystem = inventorySystem;
+        inventorySystem.addItem();
     }
     
     /**
-    * Starts a new sale, first method to be called when starting a sale
-    * @return getSaleInformation returns the information of the sale
-    */
+     * Begins a new purchase session.
+     * @return SaleDTO containing details of the new sale
+     */
     public SaleDTO startSale() {
-        
-        this.sale = new Sale();
-        for(IncomeObserver obs : incomeObserver)
-            sale.IncomeObs(obs);
-        return sale.getSaleInformation();
+        this.currentSale = new Sale();
+        for(IncomeObserver tracker : revenueTrackers)
+            currentSale.IncomeObs(tracker);
+        return currentSale.getSaleInformation();
     }
     
     /**
-    * Adds an item to the sale by scanningen the barcode.
-    * @param barCode a bar code which identifies an item
-    * @param quantity The amount of the a single item a customer is buying
-    * @return SaleDTO, 
-     * @throws BarCodeNotFoundException if barcode is not found in hardcoded 
-     * invetory system 
-     * @throws DataBaseFailureException if database is offline which happens 
-     * if the barcode is equal to 500
-    */
+     * Attempts to scan and register an item by its barcode.
+     * @param barCode Item identifier
+     * @param quantity How many of the scanned item the customer wants
+     * @return updated sale data after the item is added
+     * @throws BarCodeNotFoundException when barcode is missing in the inventory
+     * @throws DataBaseFailureException triggered by simulated DB error (barcode 500)
+     */
     public SaleDTO enterItem(int barCode, int quantity) throws BarCodeNotFoundException, DataBaseFailureException {
-        Item item = inventory.search(barCode);
-        if (item == null) {
+        Item foundItem = inventorySystem.search(barCode);
+        if (foundItem == null) {
             return null;
         }
-        if (item.getStoreQuantity() >= quantity) {
-            sale.addItem(item, quantity);
-        }   
-        else {
+        if (foundItem.getStoreQuantity() >= quantity) {
+            currentSale.addItem(foundItem, quantity);
+        } else {
             return null;
         }
-        return this.sale.getSaleInformation();
+        return this.currentSale.getSaleInformation();
     }
 
     /**
-    * Ends a sale is called when all items has been scanned. And updates stores inventory
-    * @return a SaleDTO is being returned with information about the sale
-    */
+     * Finalizes the sale and synchronizes inventory updates.
+     * @return summary of the completed sale
+     */
     public SaleDTO endSale() {
-    	List<Integer> itemsQuantity = sale.getCustomerItemsQuantity();
-        List<Item> items = sale.getItems();
-        
-        
+        List<Integer> soldQuantities = currentSale.getCustomerItemsQuantity();
+        List<Item> purchasedItems = currentSale.getItems();
 
-        for (Item item : items) {
-            for (Item item2 : this.inventory.getStoreItems()) {
-                if (item == item2) {
-                       this.inventory.getStoreItems().get(this.inventory.getStoreItems().indexOf(item2)).updateQuantity(itemsQuantity.get(items.indexOf(item)));
-                    }
-		}
+        for (Item item : purchasedItems) {
+            for (Item stockItem : this.inventorySystem.getStoreItems()) {
+                if (item == stockItem) {
+                    this.inventorySystem.getStoreItems()
+                        .get(this.inventorySystem.getStoreItems().indexOf(stockItem))
+                        .updateQuantity(soldQuantities.get(purchasedItems.indexOf(item)));
+                }
             }
-	
-    	return this.sale.getSaleInformation();
+        }
+
+        return this.currentSale.getSaleInformation();
     }
     
     /**
-    * Calculates change and updates the ecternal accounting system also updates 
-    * observers
-    * @param amount describes the amount paid by the customer
-     * @param totalPrice total price of one sale
-    * @return change amount of change the customer should receive
-    */
-    public Payment pay(double amount,  double totalPrice) {
-        double change = amount - totalPrice;
-        String paymentMessage = "";
-    
-        if(change >= 0){
-            this.accounting.update(amount - change);
+     * Finalizes the payment process, calculates change, and notifies revenue trackers.
+     * @param paidAmount how much the customer has given
+     * @param saleTotal total cost of all purchased items
+     * @return Payment object containing change and optional messages
+     */
+    public Payment pay(double paidAmount, double saleTotal) {
+        double changeDue = paidAmount - saleTotal;
+        String message = "";
+
+        if(changeDue >= 0){
+            this.accountingSystem.update(paidAmount - changeDue);
+        } else {
+            message = "Insufficient funds";
+            changeDue = 0;
         }
-        else{
-            paymentMessage = "To little money";
-            change = 0;
+
+        for(IncomeObserver tracker : revenueTrackers){
+            tracker.updateIncome(saleTotal);
         }
-        for(IncomeObserver obs : incomeObserver){
-            obs.updateIncome(totalPrice);
-    }
-        
-        return new Payment(change, paymentMessage);
+
+        return new Payment(changeDue, message);
     }
 
-    
-    
     /**
-     * printer prints the receipt for the sale.
+     * Prints the final receipt of the current sale.
      */
     public void print() {
-    	printer.print(this.sale.getReceipt(sale));
+        receiptPrinter.print(this.currentSale.getReceipt(currentSale));
     }
-    
-    
+
     /**
-     * Registers a observer to be able to add new sale
-     * and its income
-     * @param obs Observer to be notified
+     * Adds a revenue observer for monitoring earnings after each sale.
+     * @param tracker observer instance to be notified
      */
-    public void addObs(IncomeObserver obs){
-        incomeObserver.add(obs);
+    public void addObs(IncomeObserver tracker){
+        revenueTrackers.add(tracker);
     }
-    
-    
 }

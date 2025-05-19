@@ -1,26 +1,24 @@
 package se.kth.iv1350.possystem.integration;
 
-
 /**
- * This class is to handle and implement database exception
+ * Handles database-related checks and triggers custom exceptions when needed.
  */
-
 public class DatabaseHandler {
 
     /**
-     * instance of databasehandler
+     * Creates a new instance of the database handler.
      */
     public DatabaseHandler() {
     }
 
     /**
-     * Method for checking if databasse is down to throw the exception
-     * @throws DataBaseFailureException if database is down. Happens when a 
-     * barcode is equal to 500
+     * Simulates a database call and throws an exception if the database is unavailable.
+     * @throws DataBaseFailureException if the system simulates a database failure,
+     * which occurs when the barcode is 500
      */
     public void databaseOperation() throws DataBaseFailureException {
-        boolean databaseIsDown = false; 
-        if (databaseIsDown) {
+        boolean isDbUnavailable = false; 
+        if (isDbUnavailable) {
             throw new DataBaseFailureException("The database is down");
         }
     }

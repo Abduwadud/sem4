@@ -1,32 +1,31 @@
-
 package se.kth.iv1350.possystem.integration;
 
 /**
- *External accounting system which handles all the stores accounting
+ * Represents an external system that manages the store’s financial records.
  */
 public class ExternalAccountingSystem {
-     private int storeBalance;
+    private int currentBalance;
     
     /**
-     * Updates store balance with an example starting amount satrting amount.
+     * Initializes the system with a base amount of funds.
      */
     public ExternalAccountingSystem() {
-        this.storeBalance = 200;
+        this.currentBalance = 200;
     }
     
     /**
-     * Updates the store balance with the total price of a sale.
-     * @param totalPrice Money recived from the sale.
+     * Increases the current balance by the amount paid in a completed sale.
+     * @param amountPaid Total money received from the sale.
      */
-    public void update(double totalPrice) {
-    	this.storeBalance += totalPrice;
+    public void update(double amountPaid) {
+        this.currentBalance += amountPaid;
     }
     
     /**
-     * Getter for store balance
-     * @return store balance amount.
+     * Returns the current balance stored in the accounting system.
+     * @return the store’s financial balance.
      */
     public double getStoreBalance() {
-        return this.storeBalance;
+        return this.currentBalance;
     }
 }
