@@ -4,3 +4,4 @@ Error item with given barcode does not exist se.kth.iv1350.possystem.integration
 This is a log message
 Error item with given barcode does not exist se.kth.iv1350.possystem.integration.BarCodeNotFoundException: Item with bar code 1 not found in system
 This is a log message
+This is a log message

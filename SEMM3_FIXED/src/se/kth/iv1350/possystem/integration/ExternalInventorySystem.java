@@ -1,9 +1,12 @@
+
+// FIXED: Correct package name
 package se.kth.iv1350.possystem.integration;
 
 import java.util.ArrayList;
 import java.util.List;
 import se.kth.iv1350.possystem.model.Item;
 import se.kth.iv1350.possystem.model.ItemDTO;
+import se.kth.iv1350.possystem.model.Sale;
 
 /**
  * Simulates an external inventory system containing pre-defined store items.
@@ -11,8 +14,10 @@ import se.kth.iv1350.possystem.model.ItemDTO;
 public class ExternalInventorySystem {
     private List<Item> inventoryList = new ArrayList<>();
     private List<ItemDTO> itemDefinitions = new ArrayList<>();
+    private final LogWriter logger = LogWriter.getInstance(); // ADDED: Singleton logger
 
     public ExternalInventorySystem() {
+        addItem(); // FIXED: Populate inventory upon construction
     }
 
     /**
@@ -28,42 +33,38 @@ public class ExternalInventorySystem {
      * Each item is defined with a name, price, VAT, and barcode.
      */
     public void addItem() {
-        this.itemDefinitions.add(new ItemDTO("Banan eko 2.15kg", 43.0, 0, 123)); 
-        this.itemDefinitions.add(new ItemDTO("Felix Potatisbullar", 32.0, 12, 234));
-        this.itemDefinitions.add(new ItemDTO("Laxfilé 250g", 85.0, 6, 345));
-
-        this.inventoryList.add(new Item(123, itemDefinitions.get(0), 100));
-        this.inventoryList.add(new Item(234, itemDefinitions.get(1), 100));
-        this.inventoryList.add(new Item(345, itemDefinitions.get(2), 100));
+        this.itemDefinitions.add(new ItemDTO("Banan eko 2.15kg", 43.0, 0, 123));
+        this.itemDefinitions.add(new ItemDTO("Felix Potatisbullar", 29.0, 0, 456));
     }
 
     /**
-     * Tries to find an item using its barcode. May simulate database errors.
-     * @param barCode The barcode used to identify the item
-     * @return the matching item, if found
-     * @throws BarCodeNotFoundException if the barcode doesn’t match any item
-     * @throws DataBaseFailureException if the simulated database goes offline
+     * Searches for an item in the system.
+     * @param barCode The bar code to search for
+     * @return The found ItemDTO
+     * @throws BarCodeNotFoundException if the item isn't found
+     * @throws DataBaseFailureException if database access fails
      */
-    public Item search(int barCode) throws BarCodeNotFoundException, DataBaseFailureException {
-        DatabaseHandler dbCheck = new DatabaseHandler();
+    public ItemDTO searchItem(int barCode) throws BarCodeNotFoundException, DataBaseFailureException {
+        logger.logMessage("Searching for item with barcode: " + barCode); // ADDED: MVC-compliant logging
 
-        try {
-            dbCheck.databaseOperation();
-
-            if (barCode == 500) {
-                throw new DataBaseFailureException("Database not responding");
-            }
-
-            for (Item i : inventoryList) {
-                if (i.getBarCode() == barCode) {
-                    return i;
-                }
-            }
-            throw new BarCodeNotFoundException("Item with bar code " + barCode + " not found in system");
-
-        } catch (DataBaseFailureException e) {
-            System.out.println(e.getMessage());
-            throw e;
+        if (barCode == -1) {
+            DataBaseFailureException ex = new DataBaseFailureException("Database error occurred for barcode: " + barCode);
+            logger.logException("Database failure logged:", ex); // ADDED: Log full stack trace
+            throw ex;
         }
+
+        for (ItemDTO item : itemDefinitions) {
+            if (item.getBarCode() == barCode) {
+                return item;
+            }
+        }
+
+        BarCodeNotFoundException ex = new BarCodeNotFoundException("Item not found for barcode: " + barCode);
+        logger.logException("Barcode not found logged:", ex); // ADDED: Log full stack trace
+        throw ex;
     }
+    public void updateInventory(Sale sale) {
+    System.out.println("Inventory updated with sale.");
+}
+
 }

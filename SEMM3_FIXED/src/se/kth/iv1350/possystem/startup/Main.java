@@ -20,8 +20,8 @@ public class Main {
         Printer printer = new Printer();
         ExternalAccountingSystem accounting = new ExternalAccountingSystem();
         ExternalInventorySystem inventory = new ExternalInventorySystem();
+        Controller contr = new Controller(inventory, accounting, printer); // FIXED
 
-        Controller contr = new Controller(printer, accounting, inventory);
         View view = new View(contr);
         
         view.runFakeExecution();

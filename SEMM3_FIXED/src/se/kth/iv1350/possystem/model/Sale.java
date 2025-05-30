@@ -101,6 +101,16 @@ public class Sale {
         this.saleInformation = new SaleDTO(this.time, this.totalVAT, this.totalPrice, this.items);
     }
 
+    // ADDED: Allows controller to register revenue observers
+public void addObserver(IncomeObserver obs) {
+    incomeObs.add(obs);
+}
+// ADDED: Returns current sale DTO
+public SaleDTO getSaleDTO() {
+    return saleInformation;
+}
+
+
     /**
     * Updates the total VAT a sale.
     * @param amount the price of the item.
@@ -137,4 +147,13 @@ public class Sale {
     public void IncomeObs(IncomeObserver observer){
         incomeObs.add(observer);
     }
+    
+// ADDED: Calculates and returns the total price of the sale
+public double calculateTotalPrice() {
+    return this.totalPrice;
+}
+public Receipt generateReceipt(Payment payment) {
+    return new Receipt(this.saleInformation, payment);
+}
+
 }

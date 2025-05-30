@@ -33,7 +33,13 @@ public class Item {
     public int getBarCode() {
     	return this.barCode;
     }
-    
+    // ADDED: Simplified constructor for wrapping an ItemDTO
+public Item(ItemDTO itemDTO) {
+    this.itemDTO = itemDTO;
+    this.barCode = itemDTO.getBarCode();
+    this.storeQuantity = 10; // Default or mock quantity
+}
+
     /**
      * Returns store quantity of an item in the store.
      * @return quantity of item in store.

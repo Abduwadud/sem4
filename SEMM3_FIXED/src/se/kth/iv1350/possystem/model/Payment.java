@@ -19,6 +19,10 @@ public class Payment {
     public String getMessage() {
         return message;
     }
+    public Payment(double amountPaid, double totalPrice) {
+        this.change = amountPaid - totalPrice;
+        this.message = "Payment received: " + amountPaid + " SEK";
+    }
     
 
 }

@@ -9,126 +9,96 @@ import se.kth.iv1350.possystem.integration.ExternalInventorySystem;
 import se.kth.iv1350.possystem.integration.Printer;
 import se.kth.iv1350.possystem.model.IncomeObserver;
 import se.kth.iv1350.possystem.model.Item;
+import se.kth.iv1350.possystem.model.ItemDTO;
 import se.kth.iv1350.possystem.model.Payment;
+import se.kth.iv1350.possystem.model.Receipt;
 import se.kth.iv1350.possystem.model.Sale;
 import se.kth.iv1350.possystem.model.SaleDTO;
-import se.kth.iv1350.possystem.view.TotalRevenueFileOutput;
-import se.kth.iv1350.possystem.view.TotalRevenueView;
 
 /**
- * Acts as the main coordinator between external systems, the model layer, and the user interface.
+ * This class is responsible for handling the operations between the view and model layers.
  */
 public class Controller {
-    private ExternalAccountingSystem accountingSystem;
-    private ExternalInventorySystem inventorySystem;
-    private Printer receiptPrinter; 
     private Sale currentSale;
-    private List<IncomeObserver> revenueTrackers = new ArrayList<>();
-    private TotalRevenueView revenueView;
-    private TotalRevenueFileOutput revenueFileLogger;
-    
+    private ExternalInventorySystem inventorySystem;
+    private ExternalAccountingSystem accountingSystem;
+    private Printer printer;
+    private List<IncomeObserver> revenueObservers = new ArrayList<>();
+
     /**
-     * Initializes the controller and sets up external system connections.
-     * @param receiptPrinter Used to output the receipt
-     * @param accountingSystem External system that tracks financial transactions
-     * @param inventorySystem External storage representing item inventory
+     * Creates an instance of the controller.
+     * 
+     * @param inventorySystem External inventory system.
+     * @param accountingSystem External accounting system.
+     * @param printer Printer for receipt.
      */
-    public Controller(Printer receiptPrinter, ExternalAccountingSystem accountingSystem, ExternalInventorySystem inventorySystem) {
-        this.receiptPrinter = receiptPrinter;
-        this.accountingSystem = accountingSystem;
+    public Controller(ExternalInventorySystem inventorySystem, ExternalAccountingSystem accountingSystem, Printer printer) {
         this.inventorySystem = inventorySystem;
-        inventorySystem.addItem();
+        this.accountingSystem = accountingSystem;
+        this.printer = printer;
     }
-    
+
     /**
-     * Begins a new purchase session.
-     * @return SaleDTO containing details of the new sale
+     * Starts a new sale transaction.
      */
-    public SaleDTO startSale() {
+    public void startSale() {
         this.currentSale = new Sale();
-        for(IncomeObserver tracker : revenueTrackers)
-            currentSale.IncomeObs(tracker);
-        return currentSale.getSaleInformation();
+        for (IncomeObserver obs : revenueObservers) {
+            currentSale.addObserver(obs);
+        }
     }
-    
+
     /**
-     * Attempts to scan and register an item by its barcode.
-     * @param barCode Item identifier
-     * @param quantity How many of the scanned item the customer wants
-     * @return updated sale data after the item is added
+     * Adds an item to the current sale.
+     * 
+     * @param barCode Item bar code.
+     * @param quantity Quantity of item.
+     * @return SaleDTO containing updated sale info.
      * @throws BarCodeNotFoundException when barcode is missing in the inventory
-     * @throws DataBaseFailureException triggered by simulated DB error (barcode 500)
+     * @throws DataBaseFailureException triggered by simulated DB error (barcode -1)
      */
     public SaleDTO enterItem(int barCode, int quantity) throws BarCodeNotFoundException, DataBaseFailureException {
-        Item foundItem = inventorySystem.search(barCode);
+        ItemDTO foundItemDTO = inventorySystem.searchItem(barCode); // FIXED: Corrected method name
+        Item foundItem = new Item(foundItemDTO); // FIXED: Wrap DTO into domain object
+
         if (foundItem == null) {
             return null;
         }
         if (foundItem.getStoreQuantity() >= quantity) {
             currentSale.addItem(foundItem, quantity);
-        } else {
-            return null;
         }
-        return this.currentSale.getSaleInformation();
+        return currentSale.getSaleDTO();
     }
 
     /**
-     * Finalizes the sale and synchronizes inventory updates.
-     * @return summary of the completed sale
+     * Completes the sale and returns the total amount.
+     * 
+     * @return Total price of sale.
      */
-    public SaleDTO endSale() {
-        List<Integer> soldQuantities = currentSale.getCustomerItemsQuantity();
-        List<Item> purchasedItems = currentSale.getItems();
-
-        for (Item item : purchasedItems) {
-            for (Item stockItem : this.inventorySystem.getStoreItems()) {
-                if (item == stockItem) {
-                    this.inventorySystem.getStoreItems()
-                        .get(this.inventorySystem.getStoreItems().indexOf(stockItem))
-                        .updateQuantity(soldQuantities.get(purchasedItems.indexOf(item)));
-                }
-            }
-        }
-
-        return this.currentSale.getSaleInformation();
-    }
-    
-    /**
-     * Finalizes the payment process, calculates change, and notifies revenue trackers.
-     * @param paidAmount how much the customer has given
-     * @param saleTotal total cost of all purchased items
-     * @return Payment object containing change and optional messages
-     */
-    public Payment pay(double paidAmount, double saleTotal) {
-        double changeDue = paidAmount - saleTotal;
-        String message = "";
-
-        if(changeDue >= 0){
-            this.accountingSystem.update(paidAmount - changeDue);
-        } else {
-            message = "Insufficient funds";
-            changeDue = 0;
-        }
-
-        for(IncomeObserver tracker : revenueTrackers){
-            tracker.updateIncome(saleTotal);
-        }
-
-        return new Payment(changeDue, message);
+    public double endSale() {
+        return currentSale.calculateTotalPrice();
     }
 
     /**
-     * Prints the final receipt of the current sale.
+     * Processes the payment for the sale.
+     * 
+     * @param amountPaid amount customer paid.
+     * @param totalPrice total cost of the sale.
      */
-    public void print() {
-        receiptPrinter.print(this.currentSale.getReceipt(currentSale));
+    public void pay(double amountPaid, double totalPrice) {
+        Payment payment = new Payment(amountPaid, totalPrice);
+        Receipt receipt = currentSale.generateReceipt(payment);
+        accountingSystem.update(receipt);
+        inventorySystem.updateInventory(currentSale);
+        printer.printReceipt(receipt);
     }
 
     /**
-     * Adds a revenue observer for monitoring earnings after each sale.
-     * @param tracker observer instance to be notified
+     * Adds an observer to observe revenue.
+     * 
+     * @param obs Observer to add.
      */
-    public void addObs(IncomeObserver tracker){
-        revenueTrackers.add(tracker);
+    public void addObs(IncomeObserver obs) {
+        revenueObservers.add(obs);
     }
 }

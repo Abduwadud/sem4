@@ -34,4 +34,8 @@ public class Printer {
         System.out.println("Total price: " + totalPrice);
         System.out.println("Total VAT: " + totalVAT);
     }
+    public void printReceipt(Receipt receipt) {
+        print(receipt); // reuse existing print method
+    }
+    
 }

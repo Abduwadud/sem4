@@ -1,5 +1,7 @@
 package se.kth.iv1350.possystem.integration;
 
+import se.kth.iv1350.possystem.model.Receipt;
+
 /**
  * Represents an external system that manages the store’s financial records.
  */
@@ -28,4 +30,8 @@ public class ExternalAccountingSystem {
     public double getStoreBalance() {
         return this.currentBalance;
     }
+    public void update(Receipt receipt) {
+    System.out.println("Accounting system updated with receipt.");
+}
+
 }

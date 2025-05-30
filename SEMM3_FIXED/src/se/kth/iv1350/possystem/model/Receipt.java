@@ -73,4 +73,14 @@ public class Receipt {
     public double getTotalVAT() {
         return this.totalVAT;
     }
+    // ADDED: Constructor that includes payment
+public Receipt(SaleDTO saleInformation, Payment payment) {
+    this.saleInformation = saleInformation;
+    this.totalVAT = saleInformation.getTotalVAT();
+    this.totalPrice = saleInformation.getTotalPrice();
+    this.nameOfItems = saleInformation.getItems();
+    this.time = LocalTime.now();
+    // You can log or print payment info if needed
+}
+
 }
